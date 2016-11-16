@@ -1,0 +1,656 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Code for the figure of
+% osf.io project: Face Off
+% This code reproduces the figures presented on the article:
+%
+% This code require two results file for each experiment, that should be
+% whithin the ~/results/ directory
+%
+% - allfreqsnew_<date>_<eccentricity or sleepy>_AR.mat is the results of the
+%                   spectral analysis for all subjects and trials of the 
+%                   respective experiment (this is the result of script 
+%                   eccentricity_freq.m)
+% - glm_AR_<eccentricity or sleepy>_<date>_allpow_signpermT_cluster.mat is
+%                   the result of the linear analysis performed with
+%                   exp<1 or 2>_glm.m over allfreqsnew data
+% 
+% Need the folowing code:
+% tightfig: https://de.mathworks.com/matlabcentral/fileexchange/34055-tightfig
+% jbfill  : https://de.mathworks.com/matlabcentral/fileexchange/13188-shade-area-between-two-curves
+% by Jose Ossandon (jose.ossandon@uni-hamburg.de) 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Get data from all channels, electrodes, and subject, basleine corrected
+% (-2 to 0) power in dB
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+clear
+path        = '/Users/jossando/trabajo/FaceOff/code/osf/';
+datestr     = '260416';
+load([path 'results/allfreqsnew_' datestr '_eccentricity_AR'],'allpowbslrl')
+
+% rearrenge data in a matrix
+for suj=1:size(allpowbslrl,1)
+    for st=1:size(allpowbslrl,2)
+%         pow(suj,st,:,:)     = squeeze(mean(allpow(suj,st).powspctrm)); % power spectra averaged acrros trial
+        powbslrl(suj,st,:,:)   = squeeze(mean(allpowbslrl(suj,st).powspctrm));     % power spectra of averaged trials
+    end
+end
+allpowec = allpowbslrl;
+datestr     = '080816';
+load([path 'results/allfreqsnew_' datestr '_sleepy_AR.mat'],'allpowbslrl')
+% rearrenge data in a matrix
+for suj=1:size(allpowbslrl,1)
+    for st=1:size(allpowbslrl,2)
+%         powsleep(suj,st,:,:)     = squeeze(mean(allpow(suj,st).powspctrm)); % power spectra averaged acrros trial
+        powbslrlsleep(suj,st,:,:)   = squeeze(mean(allpowbslrl(suj,st).powspctrm));     % power spectra of averaged trials
+    end
+end
+allpowsl = allpowbslrl;
+   chanlocs = readlocs([path 'channels/locs_new.sph'],'filetype','custom',...
+          'format',{'channum','sph_phi_besa','sph_theta_besa','ignore'},'skiplines',0);
+clear st suj
+
+%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Panels Xx and Xx
+% Average spectra in dB from baseline both expriment
+% frequencies from .6 to 24.9 Hz in .1 steps
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+freqs       = allpowec(1,1).freq(7:end);
+Mpow        = squeeze(mean(mean(mean(10*log10(powbslrl(:,:,:,7:end)),2),3),1))';
+Spow        = squeeze(std(mean(mean(10*log10(powbslrl(:,:,:,7:end)),2),3),1,1))'/sqrt(size(powbslrl,1));
+harmfreqs   = [5 6 10 11 12 15 18 20];
+[~,indx]    = ismember(harmfreqs,allpowec(1,1).freq(7:end))
+peakhf      = Mpow(indx);
+fh=figure;
+plot([repmat(harmfreqs,2,1),[-1;25]],...
+    [[- 2.5*(ones(1,length(harmfreqs)));peakhf],[0;0]],':',...
+    'LineWidth',2,'Color',[.75 .75 .75])
+jbfill(freqs,Mpow+Spow,Mpow-Spow,hex2rgb('0090A3'),[0 162 184]/256,1,1),hold on
+plot(freqs,Mpow,'Color',[144 214 224]/256,'LineWidth',1)
+
+
+set(gca,'Xtick',0:25,...
+        'XTickLabels',{'0','','','','','5','6','','','','10','11','12','','','15','','','18','','20','','','','','25'},...
+        'Ytick',-2.5:.5:2,...
+        'YTickLabels',{'-2.5','2','','','','0','','','','2'},...
+        'FontSize',12)
+pax = get(gca)
+% annotation('textarrow',[5 4.2].*pax.Position(3)/26+pax.Position(1),[2.2+peakhf(1) 2.2+1.9].*pax.Position(4)/4.4+pax.Position(2));
+
+xlabel('Frequency (Hz)','FontSize',16)
+ylabel('Relative Power (dB)','FontSize',16)
+axis([-1 25 -2.2 2.2])
+axis square
+box off
+tightfig
+% set(gcf, 'renderer', 'opengl');
+doimage(fh,[path 'figures/singlePanels/'],'epsc','3a_averag_espectra_ecc',1)
+
+%%%%%%%%%%%%%%%%%
+% inset topoplots
+%%%%%%%%%%%%%%%%%
+% topo 5hz
+
+% load('/Users/jossando/trabajo/CEM/code/auxiliar/cmapjp','cmap')
+% [cmap] = diverging_map(0:1/256:1-1/256,hex2rgb('4897D8'),hex2rgb('FA6E59'));
+[cmap] = diverging_map(0:1/256:1-1/256,hex2rgb('4897D8'),hex2rgb('D61800'));
+cl          = 5;
+collim      = [-cl cl];
+
+%5Hz
+% axes('Position',[.55 .8 .2 .2])
+fr          = [4.9 5.1];
+indxfreq    = find(allpowec(1,1).freq>fr(1) & allpowec(1,1).freq<fr(2));
+fh = figure;
+topoplot(squeeze(sum(mean(mean(10*log10(powbslrl(:,:,:,indxfreq)),1),2),4)),chanlocs,'maplimits',collim,'colormap',cmap,'whitebk','on','shading','interp','electrodes','off');
+tightfig
+doimage(fh,[path 'figures/singlePanels/'],'tiff','3a_inset_5hz',1)
+
+%6Hz
+% axes('Position',[.55 .55 .2 .2])
+fr          = [5.9 6.1];
+indxfreq    = find(allpowec(1,1).freq>fr(1) & allpowec(1,1).freq<fr(2));
+fh = figure;
+topoplot(squeeze(sum(mean(mean(10*log10(powbslrl(:,:,:,indxfreq)),1),2),4)),chanlocs,'maplimits',collim,'colormap',cmap,'whitebk','on','shading','interp','electrodes','off');
+tightfig
+doimage(fh,[path 'figures/singlePanels/'],'tiff','3a_inset_6hz',1)
+
+fh = figure
+axis off, caxis(collim)
+set(gca,'Position', [0.037004     0.038122      0.95      0.1])
+hc = colorbar('South','XTick',0:cl/4:cl,'XTickLabels','','XLim',[0 cl],'colormap',cmap,'FontSize',14);
+set(hc,'Position',[.1 .33 .8 .45])
+tightfig
+doimage(fh,[path 'figures/singlePanels/'],'tiff',['colorbar_red_0to' num2str(cl)],1)    
+    
+    
+    
+    
+    
+    
+    
+    
+%%
+
+doimage(fh,['/Users/jossando/Dropbox (Personal)/FaceOff (1)/_Paper/Figures/tag_response/'],'tiff','averagespectra',0)
+doimage(fh,['/Users/jossando/Dropbox (Personal)/FaceOff (1)/_Paper/Figures/tag_response/'],'epsc','averagespectra',1)
+
+plot(allpowsl(1,1).freq(6:end),squeeze(mean(mean(mean(10*log10(powbslrlsleep(:,:,:,6:end)),2)))),'LineWidth',2)
+set(gca,'Xtick',1:25,'FontSize',12),grid,xlabel('Frequency (Hz)','FontSize',16),ylabel('Relative Power (dB)','FontSize',16)
+box off
+tightfig
+doimage(fh,['/Users/jossando/Dropbox (Personal)/FaceOff (1)/_Paper/Figures/tag_response/'],'tiff','averagespectra',0)
+doimage(fh,['/Users/jossando/Dropbox (Personal)/FaceOff (1)/_Paper/Figures/tag_response/'],'epsc','averagespectra',1)
+%%
+% topoplot
+% topo 5 and 6 hz
+load('/Users/jossando/trabajo/CEM/code/auxiliar/cmapjp','cmap')
+cl          = 5;
+collim      = [-cl cl];
+
+fh=figure
+fr          = [4.9 5.1];
+indxfreq    = find(allpowec(1,1).freq>fr(1) & allpowec(1,1).freq<fr(2));
+topoplot(squeeze(sum(mean(mean(10*log10(powbslrl(:,:,:,indxfreq)),1),2),4)),chanlocs,'maplimits',collim,'colormap',cmap,'whitebk','on','shading','interp','electrodes','off');
+tightfig
+doimage(fh,['/Users/jossando/Dropbox (Personal)/FaceOff (1)/_Paper/Figures/figure_tagging/'],'tiff','topo5eccen',1)
+  
+fh=figure
+indxfreq    = find(allpowsl(1,1).freq>fr(1) & allpowsl(1,1).freq<fr(2));
+topoplot(squeeze(sum(mean(mean(10*log10(powbslrlsleep(:,:,:,indxfreq)),1),2),4)),chanlocs,'maplimits',collim,'colormap',cmap,'whitebk','on','shading','interp','electrodes','off');
+tightfig
+doimage(fh,['/Users/jossando/Dropbox (Personal)/FaceOff (1)/_Paper/Figures/figure_tagging/'],'tiff','topo5sleep',1)
+% 
+%     figure
+%      headplot_op      ={'/Users/jossando/trabajo/FaceOff/code/analysis/testhead.spl','maplimits',collim,'colormap',cmap,'view',[10 40],'electrodes','off'};
+%      headplot(squeeze(sum(mean(mean(10*log10(powbslrl(:,:,:,indxfreq)),1),2),4)),headplot_op{:});%'colormap',cmap
+%     
+%      figure
+%       headplot_op      ={'/Users/jossando/trabajo/FaceOff/code/analysis/testhead.spl','maplimits',collim,'colormap',cmap,'view',[78 20],'electrodes','off'};
+%      headplot(squeeze(sum(mean(mean(10*log10(powbslrl(:,:,:,indxfreq)),1),2),4)),headplot_op{:});%'colormap',cmap
+   
+fh=figure
+fr          = [5.9 6.1];
+indxfreq    = find(allpowec(1,1).freq>fr(1) & allpowec(1,1).freq<fr(2));
+topoplot(squeeze(sum(mean(mean(10*log10(powbslrl(:,:,:,indxfreq)),1),2),4)),chanlocs,'maplimits',collim,'colormap',cmap,'whitebk','on','shading','interp','electrodes','off');
+tightfig
+doimage(fh,['/Users/jossando/Dropbox (Personal)/FaceOff (1)/_Paper/Figures/figure_tagging/'],'tiff','topo6eccen',1)
+
+fh=figure
+fr          = [5.9 6.1];
+indxfreq    = find(allpowsl(1,1).freq>fr(1) & allpowsl(1,1).freq<fr(2));
+topoplot(squeeze(sum(mean(mean(10*log10(powbslrlsleep(:,:,:,indxfreq)),1),2),4)),chanlocs,'maplimits',collim,'colormap',cmap,'whitebk','on','shading','interp','electrodes','off');
+tightfig
+doimage(fh,['/Users/jossando/Dropbox (Personal)/FaceOff (1)/_Paper/Figures/figure_tagging/'],'tiff','topo6sleep',1)
+
+%     figure
+%      headplot_op      ={'/Users/jossando/trabajo/FaceOff/code/analysis/testhead.spl','maplimits',collim,'colormap',cmap,'view',[10 40],'electrodes','off'};
+%      headplot(squeeze(sum(mean(mean(10*log10(powbslrl(:,:,:,indxfreq)),1),2),4)),headplot_op{:});%'colormap',cmap
+%     
+%      figure
+%       headplot_op      ={'/Users/jossando/trabajo/FaceOff/code/analysis/testhead.spl','maplimits',collim,'colormap',cmap,'view',[78 20],'electrodes','off'};
+%      headplot(squeeze(sum(mean(mean(10*log10(powbslrl(:,:,:,indxfreq)),1),2),4)),headplot_op{:});%'colormap',cmap
+%   
+%%
+% plot figures glm
+%%
+% plot model
+clear
+for experiment = {'eccentricity'}%{'eccentricity','sleepy'}
+    dataname    = 'allpow';    % spectral analysis and then average
+    statname    = 'signpermT';%'bootet';%'bootet';%'bootet';%'signpermT';
+    statdstr    = 'MAXst';%'npMAXclus';%
+    mcname      = 'cluster';%'maxsT';%'tfce';%;
+
+    tail        = 'abs';
+    % experiment  = 'eccentricity';
+    reref       = 1; 
+    alfa         = .05;
+
+    path        = '/Users/jossando/trabajo/FaceOff/';
+    if strcmp(experiment,'eccentricity')
+    load([path experiment{1} '/glm_new_AR_080816_' dataname '_' statname '_' mcname ])
+    else
+    load([path experiment{1} '/glm_new_AR_180816_' dataname '_' statname '_' mcname ])
+    end    
+    rerefstr    = 'AR';
+
+
+    load('/Users/jossando/trabajo/CEM/code/auxiliar/cmapjp','cmap')
+    chanlocs = readlocs('/Users/jossando/trabajo/CEM/channels/locs_new.sph','filetype','custom',...
+              'format',{'channum','sph_phi_besa','sph_theta_besa','ignore'},'skiplines',0);
+
+    % mean variance explaines
+    statsreg        = [model.STATS];
+    rsq             = mean(statsreg(:,1:7:end),2);
+    fval            = mean(statsreg(:,2:7:end),2);
+
+    pval            = 1-(1-statsreg(:,3:7:end)).^64;
+    pval(pval==0)   = min(pval(find(pval)));
+%     pval = -2*sum(log(1-(1-statsreg(:,3:3:end)).^64),2)%fisheroveradjustedcisek
+    pval = -2*sum(log(pval),2);%fisheroveradjustedcisek
+    pval =  chi2cdf(pval,2*length(model),'upper');
+    pval(pval>.05) = .05;
+
+    %r-squared values
+    fh = figure
+    cl          = .5;
+    collim      = [-cl cl];
+    topoplot(rsq,chanlocs,'maplimits',collim,'colormap',cmap,'whitebk','on','shading','interp','electrodes','off');
+    tightfig
+    doimage(fh,['/Users/jossando/Dropbox (Personal)/FaceOff (1)/_Paper/Figures/figure_model/model/'],'tiff',['topoR_' experiment{1} '_lim_' num2str(cl)],1)
+
+    fh = figure
+    axis off, caxis(collim)
+    set(gca,'Position', [0.037004     0.038122      0.95      0.1])
+    hc = colorbar('South','XTick',0:cl/4:cl,'XLim',[0 cl],'colormap',cmap,'FontSize',14);
+    set(hc,'Position',[.1 .33 .8 .45])
+    tightfig
+    doimage(fh,['/Users/jossando/Dropbox (Personal)/FaceOff (1)/_Paper/Figures/figure_model/model/'],'tiff',['colorbarR'],1)
+
+
+    %fvalue-squared values
+    fh = figure
+    cl          = 10;
+    collim      = [-cl cl];
+    topoplot(fval,chanlocs,'maplimits',collim,'colormap',cmap,'whitebk','on','shading','interp','electrodes','off');
+    tightfig
+    doimage(fh,['/Users/jossando/Dropbox (Personal)/FaceOff (1)/_Paper/Figures/figure_model/model/'],'tiff',['topoF_' experiment{1} '_lim_' num2str(cl)],1)
+
+    fh = figure
+    axis off, caxis(collim)
+    set(gca,'Position', [0.037004     0.038122      0.95      0.1])
+    hc = colorbar('South','XTick',0:cl/4:cl,'XLim',[0 cl],'colormap',cmap,'FontSize',14);
+    set(hc,'Position',[.1 .33 .8 .45])
+    tightfig
+    doimage(fh,['/Users/jossando/Dropbox (Personal)/FaceOff (1)/_Paper/Figures/figure_model/model/'],'tiff',['colorbarF'],1)
+
+
+    % figure
+    % headplot(rsq,'/Users/jossando/trabajo/FaceOff/code/analysis/testhead.spl','maplimits',collim,'colormap',cmap,'view',[10 40],'electrodes','off');
+    % 
+    % figure
+    % headplot(rsq,'/Users/jossando/trabajo/FaceOff/code/analysis/testhead.spl','maplimits',collim,'colormap',cmap,'view',[78 20],'electrodes','off');
+
+
+    %p values
+    fh = figure
+%     [cmap]=flipud(cbrewer('seq', 'Blues',128));
+    cl      = .00001;
+    collim  = [log10(cl) 2*log10(.05)-log10(cl)];  % this is like this so alpha level is in the middle of the cmap
+    topoplot(log10(pval),chanlocs,'maplimits',collim,'colormap',cmap,'whitebk','on','shading','interp','electrodes','off');
+    ax = get(gca)    % Interpolation breaks with the numbers here, giver high-pv
+    ax.Children(7).CData(ax.Children(7).CData>log10(.05)) = log10(.05);
+    caxis(collim)
+    tightfig
+    doimage(fh,['/Users/jossando/Dropbox (Personal)/FaceOff (1)/_Paper/Figures/figure_model/model/'],'tiff',['topopvalue_' experiment{1} '_lim_log' num2str(cl)],1)
+
+    fh = figure
+    axis off, caxis(collim)
+    set(gca,'Position', [0.037004     0.038122      0.95      0.1])
+    hc = colorbar('South','XTick',[log10(cl):1:log10(.05), log10(.05)],'XTickLabel',{},'XLim',[log10(cl) log10(.05)],'colormap',cmap,'FontSize',14);
+    set(hc,'Position',[.1 .33 .8 .45])
+    tightfig
+    doimage(fh,['/Users/jossando/Dropbox (Personal)/FaceOff (1)/_Paper/Figures/figure_model/model/'],'tiff',['colorbarP'],1)
+
+
+    % figure
+    % headplot(log10(pval),'/Users/jossando/trabajo/FaceOff/code/analysis/testhead.spl','maplimits',collim,'colormap',cmap,'view',[10 40],'electrodes','off');
+    % 
+    % figure
+    % headplot(log10(pval),'/Users/jossando/trabajo/FaceOff/code/analysis/testhead.spl','maplimits',collim,'colormap',cmap,'view',[78 20],'electrodes','off');
+end
+%%
+% plot betas
+clear
+for experiment = {'eccentricity','sleepy'}
+
+    dataname    = 'allpow';    % spectral analysis and then average
+    statname    = 'signpermT';%'bootet';%'bootet';%'bootet';%'signpermT';
+    statdstr    = 'MAXst';%'npMAXclus';%'MAXst';%
+    mcname      = 'cluster';%'maxsT';%'tfce';%;
+    fecha       = '090516';
+    tail        = 'negpos';
+    % experiment  = 'eccentricity';
+    reref       = 1; 
+    
+
+    path        = '/Users/jossando/trabajo/FaceOff/';
+    
+    if strcmp(experiment,'eccentricity')
+        load([path experiment{1} '/glm_new_AR_310816_' dataname '_' statname '_' mcname ])
+    else
+        load([path experiment{1} '/glm_new_AR_310816_' dataname '_' statname '_' mcname ])
+    end
+
+    rerefstr    = 'AR';
+    
+    chanlocs = readlocs('/Users/jossando/trabajo/CEM/channels/locs_new.sph','filetype','custom',...
+              'format',{'channum','sph_phi_besa','sph_theta_besa','ignore'},'skiplines',0);
+
+             collim         = [-3.5 3.5]; % for powtl
+
+    [cmapp]=cbrewer('seq', 'Blues',128);
+   
+    collims = [-6 6;-1 1;-3 3;-3 3;-3 3;-3 3;-3 3;-3 3;-3 3;-3 3;-3 3;-3 3;-3 3;-3 3;-3 3;-3 3;-3 3;-3 3;-3 3;-3 3]./10;
+
+    if strcmp(experiment,'sleepy')
+        factors = {'Constant','Left-Right','NoBeard-Beard','Up-Down','5-6Hz','LRxbeard','LRxUD','LRxfreq','beardxUD','beardxfreq','UDxfreq'};
+    elseif strcmp(experiment,'eccentricity')    
+        factors = {'Constant','Left-Right','pos-2','pos-1','pos 0','pos1','pos2','5-6Hz','-2LR','-1LR','0LR','1LR','2LR','LRxFreq','-2*freq','-1*freq','0*freq','1*freq','2*freq'};
+    end
+
+    load('/Users/jossando/trabajo/CEM/code/auxiliar/cmapjp','cmap')
+%    [cmap] = diverging_map(0:1/256:1-1/256,hex2rgb('4897D8'),hex2rgb('FA6E59'));
+
+ [cmap] = diverging_map(0:1/256:1-1/256,hex2rgb('4897D8'),hex2rgb('D61800'));
+     if strcmp(experiment,'eccentricity')
+        load([path experiment{1} '/glm_new_AR_080816_' dataname '_' statname '_' mcname ])
+    else
+        load([path experiment{1} '/glm_new_AR_180816_' dataname '_' statname '_' mcname ])
+    end
+
+   ncomp = size(betas,2)-1;
+alfa        = .05/ncomp;
+  display(sprintf('Critical alpha/#tests 0.05/%d = %4.4f',ncomp,alfa))
+    for b = 2%size(betas,2)
+        if b==1
+            cl = .6;
+        else
+            cl = .05;
+
+        end
+         collim         = [-cl cl]; 
+%         fh = figure;
+%         axis off, caxis(collim)
+%         set(gca,'Position', [0.037004     0.038122      0.95      0.1])
+%         hc = colorbar('South','XTick',-cl:cl/2:cl,'XTickLabel',{},'XLim',[-cl cl],'colormap',cmap,'FontSize',14);
+%         set(hc,'Position',[.1 .33 .8 .45])
+%         tightfig;
+%         if b==1
+%         doimage(fh,['/Users/jossando/Dropbox (Personal)/FaceOff (1)/_Paper/Figures/betas/'],'tiff',['colorbarBconst'],1)
+%         else
+%         doimage(fh,['/Users/jossando/Dropbox (Personal)/FaceOff (1)/_Paper/Figures/betas/'],'tiff',['colorbarBother'],1)
+%         end
+
+         if strcmp(statdstr,'MAXst')
+            statd           = result.clusters(b).MAXst;
+            statd_noabs     = result.clusters(b).MAXst_noabs;
+        elseif strcmp(statdstr,'npMAXclus')
+            statd           = result.clusters(b).npMAXclus;
+        end
+       % significant clusters
+       if strcmp(tail,'negpos')
+%             pos_thresh      = prctile(statd_noabs(:,1),(1-alfa)*100); 
+%             neg_thresh      = prctile(statd_noabs(:,2),(alfa)*100);
+%             posclus         = find(result.clusters(b).maxt_pos>pos_thresh);
+%             negclus         = find(result.clusters(b).maxt_neg<neg_thresh);
+% %  
+            thresh          = prctile(statd_noabs(:),[(alfa/2)*100 (1-alfa/2)*100]);
+      posclus         = find(result.clusters(b).maxt_pos>thresh(2));
+      negclus         = find(result.clusters(b).maxt_neg<thresh(1));
+       elseif strcmp(tail,'abs')
+         thresh          = prctile(statd,(1-alfa)*100);
+         posclus         = find(result.clusters(b).maxt_pos>thresh);
+         negclus         = find(-result.clusters(b).maxt_neg>thresh);
+       end 
+
+
+        if ~isempty(posclus)
+            pm = ismember(result.clusters(b).clus_pos,posclus);
+            for p = 1:length(posclus)
+                if strcmp(tail,'abs')
+                    cluspval = sum(statd>result.clusters(b).maxt_pos(posclus(p)))./length(statd);
+                elseif strcmp(tail,'negpos')
+                      cluspval = 2.*sum(statd_noabs(:,1)>result.clusters(b).maxt_pos(posclus(p)))./numel(statd_noabs(:));
+                end
+                display(sprintf('Beta %s  | %d  Positive cluster pval = %4.4f adjusted-pval = %4.4f',factors{b},p,cluspval,1-(1-cluspval).^ncomp))
+                    end
+        else
+            pm = zeros(size(betas,1),1);
+        end
+        if ~isempty(negclus)
+            nm = ismember(result.clusters(b).clus_neg,negclus); 
+            for p = 1:length(negclus)
+                 if strcmp(tail,'abs')
+                    cluspval = sum(statd>-result.clusters(b).maxt_neg(negclus(p)))./length(result.clusters(b).MAXst);
+                 elseif strcmp(tail,'negpos')
+                     cluspval = 2.*sum(statd_noabs(:,2)<result.clusters(b).maxt_neg(negclus(p)))./numel(statd_noabs(:));
+                 end
+                display(sprintf('Beta %s  | %d  Negative cluster pval = %4.4f adjusted-pval = %4.4f',factors{b},p,cluspval,1-(1-cluspval).^ncomp))
+            end
+        else
+            nm = zeros(size(betas,1),1);
+        end
+         figure
+         topoplot_op      ={chanlocs,'maplimits',collim,'colormap',cmap,'emarker2',{find(pm|nm),'o',[0 0 0],5,1},'whitebk','on','shading','interp','electrodes','off'};
+         topoplot(mean(betas(:,b,:,:),4),topoplot_op{:});%'colormap',cmap
+         tightfig;
+% %         doimage(gcf,['/Users/jossando/Dropbox/FaceOff (1)/_Paper/Figures/betas/' experiment{1} '/'],'tiffnocompression',[factors{b} '_topo_' num2str(collim(2))],1)
+% 
+%     %     headplot_op     ={'/Users/jossando/trabajo/FaceOff/code/analysis/testhead.spl','maplimits',collim,'colormap',cmap,'view',[10 40],'electrodes','off'};
+%     %     headplot(mean(betas(:,b,:,:),4),headplot_op{:});%'colormap',cmap
+%     %     doimage(gcf,'/Users/jossando/Dropbox/FaceOff (1)/_Paper/Figures/betas/','tiffnocompression',[factors{b} '_headback_' num2str(collim(2))],1)
+%     %     
+%     %     headplot_op     ={'/Users/jossando/trabajo/FaceOff/code/analysis/testhead.spl','maplimits',collim,'colormap',cmap,'view',[78 20],'electrodes','off'};
+%     %     headplot(mean(betas(:,b,:,:),4),headplot_op{:});%'colormap',cmap
+%     %     doimage(gcf,'/Users/jossando/Dropbox/FaceOff (1)/_Paper/Figures/betas/','tiffnocompression',[factors{b} '_headlat_' num2str(collim(2))],1)
+%     %     
+
+
+%        % uncorrected p-val
+%        cl = .0001;
+%         collimp = [log10(cl) 2*log10(.05)-log10(cl)];
+%         topoplot_op      ={chanlocs,'maplimits',collimp,'colormap',cmap,'whitebk','on','shading','interp','electrodes','off'};
+% 
+%          auxp      = squeeze(result.pvalnc(:,:,b));
+% %     % auxp = 1-(1-squeeze(result.pvalnc(:,:,b))).^64 % adjusted p-value
+%         pmin = num2str(10.^collimp(1));
+%         auxp(auxp>.05) = .05;
+%         fh=figure';
+%         topoplot(log10(auxp),topoplot_op{:});%'colormap',cmap
+%         ax = get(gca) ;   % Interpolation breaks with the numbers here, giver high-pv
+%         ax.Children(7).CData(ax.Children(7).CData>log10(.05)) = log10(.05);
+% 
+%         caxis(collimp)
+%         tightfig;
+%          doimage(fh,['/Users/jossando/Dropbox/FaceOff (1)/_Paper/Figures/betas/' experiment{1} '/'],'tiffnocompression',[factors{b} '_pvaltopo_' pmin(3:end)],1)
+    end
+
+end
+%     fh = figure;
+%         axis off, caxis(collimp)
+%         set(gca,'Position', [0.037004     0.038122      0.95      0.1])
+%         hc = colorbar('South','XTick',[log10(cl):1:log10(.05), log10(.05)],'XTickLabel',10.^[log10(cl):1:log10(.05), log10(.05)],'XLim',[log10(cl) log10(.05)],'colormap',cmap,'FontSize',14);
+%         set(hc,'Position',[.1 .33 .8 .45])
+%         tightfig
+%         doimage(fh,['/Users/jossando/Dropbox (Personal)/FaceOff (1)/_Paper/Figures/betas/'],'tiff',['colorbarPvalue'],1)
+
+    %%
+    % Position betas plus constant
+
+    load([path 'eccentricity/glm_new_AR_080816_' dataname '_' statname '_' mcname ])
+      factors = {'Constant','Left-Right','pos-2','pos-1','pos 0','pos1','pos2','5-6Hz','-2LR','-1LR','0LR','1LR','2LR','LRxFreq','-2*freq','-1*freq','0*freq','1*freq','2*freq'};
+
+    cl               = .8;
+    collim         = [-cl cl]; % for powtl
+    topoplot_op      ={chanlocs,'maplimits',collim,'colormap',cmap,'whitebk','on','shading','interp','electrodes','off'};
+    headplot_op      ={'Users/jossando/trabajo/FaceOff/code/analysis/testhead.spl','maplimits',collim,'colormap',cmap,'view',[10 40],'electrodes','off'};
+
+    for p = 3:7
+    figure,topoplot(mean(betas(:,1,:,:),4)+mean(betas(:,p,:,:),4),topoplot_op{:});
+    tightfig
+    doimage(gcf,'/Users/jossando/Dropbox/FaceOff (1)/_Paper/Figures/figure_eccen/posbetas_plus_const/','tiff',[factors{p} '_betaconst_' num2str(collim(2))],1)
+end
+ fh = figure
+        axis off, caxis(collim)
+        set(gca,'Position', [0.037004     0.038122      0.95      0.1])
+        hc = colorbar('South','XTick',0:cl/4:cl,'XLim',[0 cl],'colormap',cmap,'FontSize',14);
+        set(hc,'Position',[.1 .33 .8 .45])
+        tightfig
+        doimage(fh,['/Users/jossando/Dropbox (Personal)/FaceOff (1)/_Paper/Figures/figure_eccen/posbetas_plus_const/'],'tiff',['colorbarBmasconst'],1)
+       
+%%
+% left minur right eccentricity
+clear
+dataname    = 'allpow';    % spectral analysis and then average
+statname    = 'signpermT';%'bootet';%'bootet';%'bootet';%'signpermT';
+statdstr    = 'MAXst';%'npMAXclus';%'MAXst';%
+mcname      = 'cluster';%'maxsT';%'tfce';%;
+tail        = 'negpos';
+experiment  = {'eccentricity'};
+reref       = 1; 
+
+   
+path        = '/Users/jossando/trabajo/FaceOff/';
+load([path experiment{1} '/glm_new_AR_080816_' dataname '_' statname '_' mcname ])
+rerefstr    = 'AR';
+    load('/Users/jossando/trabajo/CEM/code/auxiliar/cmapjp','cmap')
+chanlocs = readlocs('/Users/jossando/trabajo/CEM/channels/locs_new.sph','filetype','custom',...
+          'format',{'channum','sph_phi_besa','sph_theta_besa','ignore'},'skiplines',0);
+load([path 'results/allfreqsnew_260416_eccentricity_AR'],'allpow','allpowbslrl','allpowtl')
+
+fr          = [4.9 5.1];
+indx5    = find(allpow(1,1).freq>fr(1) & allpow(1,1).freq<fr(2));
+fr          = [5.9 6.1];
+indx6    = find(allpow(1,1).freq>fr(1) & allpow(1,1).freq<fr(2));
+% rearrenge data in a matrix
+for suj=1:size(allpow,1)
+    for st=1:size(allpow,2)
+        pow(suj,st,:,:)     = squeeze(mean(allpow(suj,st).powspctrm(:,:,[indx5,indx6]))); % power spectra averaged acrros trial
+    end
+end
+indxl5       = 3:7;  % left sides of faces all position 5hz
+indxr5       = 8:12; % right sides of faces all position 5hz
+indxl6       = 10:14;     % left sides of faces all position 6hz
+indxr6       = 1:5;       % right sides of faces all position 6hz
+      cl               = .2;
+    collim         = [-cl cl]; % for powtl
+    factors = {'-2','-1','0','+1','+2'};
+     topoplot_op      ={chanlocs,'maplimits',collim,'colormap',cmap,'whitebk','on','shading','interp','electrodes','off'};
+
+for pos = 1:5
+    L =(squeeze(pow(:,indxl5(pos),:,1))+squeeze(pow(:,indxl6(pos),:,2)))/2;
+    R =(squeeze(pow(:,indxr5(pos),:,1))+squeeze(pow(:,indxr6(pos),:,2)))/2;
+    figure,topoplot(mean(L-R),topoplot_op{:});
+    tightfig
+    doimage(gcf,'/Users/jossando/Dropbox/FaceOff (1)/_Paper/Figures/figure_suppl_bypos/leftminusright_bypos/','tiff',[factors{pos} '_LminsR_' num2str(collim(2))],1)
+    % effect size
+    
+    posc = find(result.clusters(2).clus_pos);
+    negc = find(result.clusters(2).clus_neg);
+    [~,~,~,stat] = ttest(mean(L(:,posc),2),mean(R(:,posc),2));
+    poscl_diff(:,pos) = mean(L(:,posc),2)-mean(R(:,posc),2);
+    poscl_effect(pos) = stat.tstat/sqrt(size(L,1));
+    
+    [~,~,~,stat] = ttest(mean(L(:,negc),2),mean(R(:,negc),2));
+    negcl_effect(pos) = stat.tstat/sqrt(size(L,1));
+    negcl_diff(:,pos) = mean(L(:,negc),2)-mean(R(:,negc),2);
+end
+
+    figure,hold on
+    errorbar(-2:1:2,mean(poscl_diff),std(poscl_diff)./sqrt(27),'.r-','LineWidth',2,'MarkerSize',14)
+    errorbar(-2:1:2,mean(negcl_diff),std(negcl_diff)./sqrt(27),'.b-','LineWidth',2,'MarkerSize',14)
+    hline(0,'k--')
+    axis([-2.5 2.5 -.25 .1])
+    set(gca,'XTick',-2:2,'YTick',-.25:.05:.1)
+    box off
+    doimage(gcf,'/Users/jossando/Dropbox/FaceOff (1)/_Paper/Figures/figure_suppl_bypos/leftminusright_bypos/','epsc','cluster_by_pos',1)
+
+    figure,
+    plot(-2:1:2,poscl_effect,'.-','LineWidth',2,'MarkerSize',14)
+    hold on,plot(-2:1:2,negcl_effect,'.-','LineWidth',2,'MarkerSize',14)
+    hline(0,'k--')
+    axis([-2.5 2.5 -.8 .8])
+    set(gca,'XTick',-2:2,'YTick',-.8:.4:.8)
+    box off
+    doimage(gcf,'/Users/jossando/Dropbox/FaceOff (1)/_Paper/Figures/figure_suppl_bypos/leftminusright_bypos/','epsc','effectsize_by_pos',1)
+
+    
+    
+    %%
+    %%
+% left minur right sleepy
+clear
+dataname    = 'allpow';    % spectral analysis and then average
+statname    = 'signpermT';%'bootet';%'bootet';%'bootet';%'signpermT';
+statdstr    = 'MAXst';%'npMAXclus';%'MAXst';%
+mcname      = 'cluster';%'maxsT';%'tfce';%;
+tail        = 'negpos';
+experiment  = {'sleepy'};
+reref       = 1; 
+
+   
+path        = '/Users/jossando/trabajo/FaceOff/';
+load([path experiment{1} '/glm_new_AR_080816_' dataname '_' statname '_' mcname ])
+rerefstr    = 'AR';
+    load('/Users/jossando/trabajo/CEM/code/auxiliar/cmapjp','cmap')
+chanlocs = readlocs('/Users/jossando/trabajo/CEM/channels/locs_new.sph','filetype','custom',...
+          'format',{'channum','sph_phi_besa','sph_theta_besa','ignore'},'skiplines',0);
+load([path 'results/allfreqsnew_080816_sleepy_AR'],'allpow')
+
+fr          = [4.9 5.1];
+indx5    = find(allpow(1,1).freq>fr(1) & allpow(1,1).freq<fr(2));
+fr          = [5.9 6.1];
+indx6    = find(allpow(1,1).freq>fr(1) & allpow(1,1).freq<fr(2));
+% rearrenge data in a matrix
+for suj=1:size(allpow,1)
+    for st=1:size(allpow,2)
+        pow(suj,st,:,:)     = squeeze(mean(allpow(suj,st).powspctrm(:,:,[indx5,indx6]))); % power spectra averaged acrros trial
+    end
+end
+indxl5       = 1:2:7;  % left sides of faces all position 5hz
+indxr5       = 2:2:8; % right sides of faces all position 5hz
+indxl6       = 2:2:8;     % left sides of faces all position 6hz
+indxr6       = 1:2:7;       % right sides of faces all position 6hz
+      cl               = .2;
+    collim         = [-cl cl]; % for powtl
+    factors = {'-2','-1','0','+1','+2'};
+     topoplot_op      ={chanlocs,'maplimits',collim,'colormap',cmap,'whitebk','on','shading','interp','electrodes','off'};
+
+% top
+    Lt =mean((squeeze(pow(:,[1,5],:,1))+squeeze(pow(:,[2,6],:,2)))/2,2);
+    Rt =mean((squeeze(pow(:,[4,8],:,1))+squeeze(pow(:,[3,7],:,2)))/2,2);
+    figure,topoplot(mean(Lt-Rt),topoplot_op{:});
+    tightfig
+    doimage(gcf,'/Users/jossando/Dropbox/FaceOff (1)/_Paper/Figures/figure_suppl_bypos/leftminusright_bypos/','tiff',['Top_LminsR_' num2str(collim(2))],1)
+% bottom
+    Lb =mean((squeeze(pow(:,[3,7],:,1))+squeeze(pow(:,[4,8],:,2)))/2,2);
+    Rb =mean((squeeze(pow(:,[2,6],:,1))+squeeze(pow(:,[1,5],:,2)))/2,2);
+    figure,topoplot(mean(Lb-Rb),topoplot_op{:});
+    tightfig 
+        doimage(gcf,'/Users/jossando/Dropbox/FaceOff (1)/_Paper/Figures/figure_suppl_bypos/leftminusright_bypos/','tiff',['Bottom_LminsR_' num2str(collim(2))],1)
+
+%     posc = find(result.clusters(2).clus_pos);
+%     negc = find(result.clusters(2).clus_neg);
+%     [~,~,~,stat] = ttest(mean(L(:,posc),2),mean(R(:,posc),2));
+%     poscl_diff(:,pos) = mean(L(:,posc),2)-mean(R(:,posc),2);
+%     poscl_effect(pos) = stat.tstat/sqrt(size(L,1));
+%     
+%     [~,~,~,stat] = ttest(mean(L(:,negc),2),mean(R(:,negc),2));
+%     negcl_effect(pos) = stat.tstat/sqrt(size(L,1));
+%     negcl_diff(:,pos) = mean(L(:,negc),2)-mean(R(:,negc),2);
+% end
+
+%     figure,hold on
+%     errorbar(-2:1:2,mean(poscl_diff),std(poscl_diff)./sqrt(27),'.r-','LineWidth',2,'MarkerSize',14)
+%     errorbar(-2:1:2,mean(negcl_diff),std(negcl_diff)./sqrt(27),'.b-','LineWidth',2,'MarkerSize',14)
+%     hline(0,'k--')
+%     axis([-2.5 2.5 -.25 .1])
+%     set(gca,'XTick',-2:2,'YTick',-.25:.05:.1)
+%     box off
+%     doimage(gcf,'/Users/jossando/Dropbox/FaceOff (1)/_Paper/Figures/figure_suppl_bypos/leftminusright_bypos/','epsc','cluster_by_pos',1)
+% 
+%     figure,
+%     plot(-2:1:2,poscl_effect,'.-','LineWidth',2,'MarkerSize',14)
+%     hold on,plot(-2:1:2,negcl_effect,'.-','LineWidth',2,'MarkerSize',14)
+%     hline(0,'k--')
+%     axis([-2.5 2.5 -.8 .8])
+%     set(gca,'XTick',-2:2,'YTick',-.8:.4:.8)
+%     box off
+%     doimage(gcf,'/Users/jossando/Dropbox/FaceOff (1)/_Paper/Figures/figure_suppl_bypos/leftminusright_bypos/','epsc','effectsize_by_pos',1)
+
+
